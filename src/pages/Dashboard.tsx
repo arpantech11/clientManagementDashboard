@@ -6,6 +6,7 @@ import { Plus, Search, LogOut, Users } from "lucide-react";
 import { ClientCard } from "@/components/ClientCard";
 import { ClientDialog } from "@/components/ClientDialog";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Client {
   id: string;
@@ -18,39 +19,45 @@ export interface Client {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: "1",
-      name: "John Smith",
-      email: "john.smith@example.com",
-      company: "Tech Solutions Inc.",
-      phone: "+1 (555) 123-4567",
-    },
-    {
-      id: "2",
-      name: "Sarah Johnson",
-      email: "sarah.j@company.com",
-      company: "Digital Ventures",
-      phone: "+1 (555) 234-5678",
-    },
-    {
-      id: "3",
-      name: "Michael Chen",
-      email: "m.chen@business.com",
-      company: "Innovation Labs",
-      phone: "+1 (555) 345-6789",
-    },
-  ]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Check authentication and load clients
   useEffect(() => {
     const isAuth = localStorage.getItem("isAuthenticated");
     if (!isAuth) {
       navigate("/");
+      return;
     }
+    
+    loadClients();
   }, [navigate]);
+
+  const loadClients = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      
+      setClients(data || []);
+    } catch (error) {
+      console.error("Error loading clients:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load clients. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
@@ -61,33 +68,84 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const handleAddClient = (client: Omit<Client, "id">) => {
-    const newClient = {
-      ...client,
-      id: Date.now().toString(),
-    };
-    setClients([...clients, newClient]);
-    toast({
-      title: "Client added",
-      description: `${client.name} has been added successfully.`,
-    });
+  const handleAddClient = async (client: Omit<Client, "id">) => {
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .insert([client])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setClients([data, ...clients]);
+      toast({
+        title: "Client added",
+        description: `${client.name} has been added successfully.`,
+      });
+    } catch (error) {
+      console.error("Error adding client:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add client. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEditClient = (client: Client) => {
-    setClients(clients.map((c) => (c.id === client.id ? client : c)));
-    toast({
-      title: "Client updated",
-      description: `${client.name} has been updated successfully.`,
-    });
+  const handleEditClient = async (client: Client) => {
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          name: client.name,
+          email: client.email,
+          company: client.company,
+          phone: client.phone,
+        })
+        .eq("id", client.id);
+
+      if (error) throw error;
+
+      setClients(clients.map((c) => (c.id === client.id ? client : c)));
+      toast({
+        title: "Client updated",
+        description: `${client.name} has been updated successfully.`,
+      });
+    } catch (error) {
+      console.error("Error updating client:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update client. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteClient = (id: string) => {
-    const client = clients.find((c) => c.id === id);
-    setClients(clients.filter((c) => c.id !== id));
-    toast({
-      title: "Client deleted",
-      description: `${client?.name} has been removed.`,
-    });
+  const handleDeleteClient = async (id: string) => {
+    try {
+      const client = clients.find((c) => c.id === id);
+      
+      const { error } = await supabase
+        .from("clients")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setClients(clients.filter((c) => c.id !== id));
+      toast({
+        title: "Client deleted",
+        description: `${client?.name} has been removed.`,
+      });
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete client. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const openEditDialog = (client: Client) => {
@@ -174,16 +232,23 @@ const Dashboard = () => {
         </div>
 
         {/* Clients Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredClients.map((client) => (
-            <ClientCard
-              key={client.id}
-              client={client}
-              onEdit={openEditDialog}
-              onDelete={handleDeleteClient}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="mt-4 text-muted-foreground">Loading clients...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredClients.map((client) => (
+              <ClientCard
+                key={client.id}
+                client={client}
+                onEdit={openEditDialog}
+                onDelete={handleDeleteClient}
+              />
+            ))}
+          </div>
+        )}
 
         {filteredClients.length === 0 && (
           <div className="text-center py-12">
