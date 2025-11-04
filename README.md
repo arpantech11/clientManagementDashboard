@@ -17,6 +17,10 @@ This project is built using a modern MERN stack architecture, ensuring a fast, s
 
 ---
 
+## Admin Details
+
+Username : admin, Password: admin20
+
 ## ⚙️ Installation Steps
 
 Follow these steps to get a local copy of the project running on your machine.
