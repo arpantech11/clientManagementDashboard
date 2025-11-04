@@ -18,9 +18,9 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate authentication
+    // Validate against specific admin credentials
     setTimeout(() => {
-      if (username && password) {
+      if (username === "admin" && password === "admin20") {
         localStorage.setItem("isAuthenticated", "true");
         toast({
           title: "Welcome back!",
@@ -29,8 +29,8 @@ const Login = () => {
         navigate("/dashboard");
       } else {
         toast({
-          title: "Error",
-          description: "Please enter username and password",
+          title: "Invalid credentials",
+          description: "Username or password is incorrect",
           variant: "destructive",
         });
       }
