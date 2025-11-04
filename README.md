@@ -1,4 +1,4 @@
-<img width="1440" height="818" alt="Screenshot 2025-11-04 at 10 23 37 AM" src="https://github.com/user-attachments/assets/bcee6910-ba4a-4e2d-98d4-0a771f60dbd1" /># 📊 Client Management Dashboard
+# 📊 Client Management Dashboard
 
 A modern, full-stack application designed to help businesses efficiently manage client data, track project statuses, and maintain client communication history. This dashboard provides a centralized and intuitive interface for client relationship management (CRM) tailored for small to medium-sized teams.
 
